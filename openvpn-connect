@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Start OpenVPN service
+echo "Starting OpenVPN service..."
+sudo systemctl start openvpn
+
+# Check if authentication file exists
+AUTH_FILE=~/.openvpn-auth
+if [ ! -f "$AUTH_FILE" ]; then
+    # Prompt user for credentials and save to file
+    echo "Enter your username:"
+    read USERNAME
+
+    echo "Enter your password:"
+    read -s PASSWORD
+
+    echo "$USERNAME" > $AUTH_FILE
+    echo "$PASSWORD" >> $AUTH_FILE
+fi
+
+# Read saved username and password from file
+echo "Reading saved username and password..."
+readarray -t auth < $AUTH_FILE
+
+# Get authentication code from command-line argument
+AUTH_CODE="$1"
+
+# Create temporary file with credentials and authentication code
+echo "Authenticating with OpenVPN service..."
+echo "${auth[0]}" > /tmp/openvpn-auth.txt
+echo "${auth[1]}$AUTH_CODE" >> /tmp/openvpn-auth.txt
+
+# Start OpenVPN client with saved credentials and authentication code
+sudo openvpn --config /etc/openvpn/client.ovpn --auth-user-pass /tmp/openvpn-auth.txt
