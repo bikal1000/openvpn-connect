@@ -21,13 +21,15 @@ Before running this script, you must have the following installed:
 
 To use this script, follow these steps:
 
-1. Run the script with the following command: `openvpn-connect <auth_code>`
+1. Save your OpenVPN configuration file to `/etc/openvpn/client.ovpn`.
+
+2. Run the script with the following command: `openvpn-connect <auth_code>`
    - Replace `<auth_code>` with your actual authentication code.
    - If you don't have an authentication code, leave this argument blank and the script will prompt you for it.
 
-2. The script will prompt you for your OpenVPN server username and password.
+3. The script will prompt you for your OpenVPN server username and password.
 
-3. If the username and password are correct, the script will connect you to the OpenVPN server.
+4. If the username and password are correct, the script will connect you to the OpenVPN server.
 
 ## Saving Your Credentials
 
