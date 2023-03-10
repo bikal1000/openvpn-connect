@@ -1,34 +1,62 @@
 #!/bin/bash
 
+# Author: Bikal Shrestha
+# Date: March 9, 2023
+
+set -euo pipefail
+
+# Set constants
+readonly AUTH_FILE=~/.openvpn-auth
+readonly CLIENT_CONFIG=/etc/openvpn/client.ovpn
+
+# Define functions
+start_openvpn() {
+  printf "Starting OpenVPN service...\n"
+  sudo systemctl start openvpn
+}
+
+check_auth_file() {
+  if [ ! -f "$AUTH_FILE" ]; then
+    return 1
+  fi
+  return 0
+}
+
+prompt_credentials() {
+  printf "Enter your username: "
+  read -r USERNAME
+
+  printf "Enter your password: "
+  read -rs PASSWORD
+
+  printf "%s\n%s" "$USERNAME" "$PASSWORD" > "$AUTH_FILE"
+}
+
+authenticate() {
+  readarray -t AUTH < "$AUTH_FILE"
+  AUTH_CODE="$1"
+  
+  TEMP_AUTH_FILE=$(mktemp)
+  printf "%s\n%s%s" "${AUTH[0]}" "${AUTH[1]}" "$AUTH_CODE" > "$TEMP_AUTH_FILE"
+
+  printf "Authenticating with OpenVPN service...\n"
+  sudo openvpn --config "$CLIENT_CONFIG" --auth-user-pass "$TEMP_AUTH_FILE"
+  
+  rm "$TEMP_AUTH_FILE"
+}
+
 # Start OpenVPN service
-echo "Starting OpenVPN service..."
-sudo systemctl start openvpn
+start_openvpn
 
-# Check if authentication file exists
-AUTH_FILE=~/.openvpn-auth
-if [ ! -f "$AUTH_FILE" ]; then
-    # Prompt user for credentials and save to file
-    echo "Enter your username:"
-    read USERNAME
-
-    echo "Enter your password:"
-    read -s PASSWORD
-
-    echo "$USERNAME" > $AUTH_FILE
-    echo "$PASSWORD" >> $AUTH_FILE
+# Check if authentication file exists, prompt user if not
+if check_auth_file; then
+  printf "Reading saved username and password...\n"
+else
+  prompt_credentials
 fi
-
-# Read saved username and password from file
-echo "Reading saved username and password..."
-readarray -t auth < $AUTH_FILE
 
 # Get authentication code from command-line argument
 AUTH_CODE="$1"
 
-# Create temporary file with credentials and authentication code
-echo "Authenticating with OpenVPN service..."
-echo "${auth[0]}" > /tmp/openvpn-auth.txt
-echo "${auth[1]}$AUTH_CODE" >> /tmp/openvpn-auth.txt
-
-# Start OpenVPN client with saved credentials and authentication code
-sudo openvpn --config /etc/openvpn/client.ovpn --auth-user-pass /tmp/openvpn-auth.txt
+# Authenticate with OpenVPN service using saved credentials and authentication code
+authenticate "$AUTH_CODE"
