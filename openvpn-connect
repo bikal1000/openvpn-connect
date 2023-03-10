@@ -34,4 +34,4 @@ echo "${auth[1]}$AUTH_CODE" >> /tmp/openvpn-auth.txt
 sudo openvpn --config /etc/openvpn/client.ovpn --auth-user-pass /tmp/openvpn-auth.txt
 
 # Log success
-logger "OpenVPN connection established."
+echo "OpenVPN connection established."
