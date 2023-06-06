@@ -29,19 +29,30 @@ prompt_credentials() {
   printf "Enter your password: "
   read -rs PASSWORD
 
-  printf "%s\n%s" "$USERNAME" "$PASSWORD" > "$AUTH_FILE"
+  printf "\nEnter your TOTP secret: "
+  read -rs TOTP_SECRET
+
+  printf "%s\n%s\n%s" "$USERNAME" "$PASSWORD" "$TOTP_SECRET" > "$AUTH_FILE"
 }
 
 authenticate() {
   readarray -t AUTH < "$AUTH_FILE"
-  AUTH_CODE="$1"
-  
+  USERNAME="${AUTH[0]}"
+  PASSWORD="${AUTH[1]}"
+  TOTP_SECRET="${AUTH[2]}"
+
+  # Generate OTP using oathtool
+  OTP=$(oathtool --totp --base32 "$TOTP_SECRET")
+
+  # Concatenate OTP with the password
+  PASSWORD_WITH_OTP="${PASSWORD}${OTP}"
+
   TEMP_AUTH_FILE=$(mktemp)
-  printf "%s\n%s%s" "${AUTH[0]}" "${AUTH[1]}" "$AUTH_CODE" > "$TEMP_AUTH_FILE"
+  printf "%s\n%s" "$USERNAME" "$PASSWORD_WITH_OTP" > "$TEMP_AUTH_FILE"
 
   printf "Authenticating with OpenVPN service...\n"
   sudo openvpn --config "$CLIENT_CONFIG" --auth-user-pass "$TEMP_AUTH_FILE"
-  
+
   rm "$TEMP_AUTH_FILE"
 }
 
@@ -50,13 +61,10 @@ start_openvpn
 
 # Check if authentication file exists, prompt user if not
 if check_auth_file; then
-  printf "Reading saved username and password...\n"
+  printf "Reading saved username, password, and TOTP secret...\n"
 else
   prompt_credentials
 fi
 
-# Get authentication code from command-line argument
-AUTH_CODE="$1"
-
-# Authenticate with OpenVPN service using saved credentials and authentication code
-authenticate "$AUTH_CODE"
+# Authenticate with OpenVPN service using saved credentials
+authenticate
